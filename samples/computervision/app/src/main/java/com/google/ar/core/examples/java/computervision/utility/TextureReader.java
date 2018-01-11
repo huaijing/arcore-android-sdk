@@ -290,7 +290,7 @@ public class TextureReader {
      *     index to acquire the frame using acquireFrame(); and you should release the frame buffer
      *     using releaseBuffer() routine after using of the frame.
      */
-    public int submitFrame(int textureId, int textureWidth, int textureHeight) {
+      public int submitFrame(int textureId, int textureWidth, int textureHeight) {
         // Find next buffer.
         int bufferIndex = -1;
         for (int i = 0; i < mBufferCount; i++) {
@@ -489,5 +489,10 @@ public class TextureReader {
 
         // Reset texture binding.
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
+    }
+
+
+    public int getmBufferFormat() {
+        return mImageFormat;
     }
 }
