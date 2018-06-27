@@ -34,4 +34,12 @@
       android:layout_alignParentLeft="true"
       android:textColor="#ffffff"/>
 
+  <Button
+      android:id="@+id/start"
+      android:layout_width="70dp"
+      android:layout_height="wrap_content"
+      android:layout_gravity="bottom"
+      android:text="START"
+      android:textSize="12sp" />
+
 </RelativeLayout>
