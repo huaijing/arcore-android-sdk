@@ -48,13 +48,14 @@ class ObjRenderer {
 
   // Draws the model.
   void Draw(const glm::mat4& projection_mat, const glm::mat4& view_mat,
-            const glm::mat4& model_mat, float light_intensity) const;
+            const glm::mat4& model_mat, const float* color_correction4,
+            const float* object_color4) const;
 
  private:
   // Shader material lighting pateremrs
   float ambient_ = 0.0f;
-  float diffuse_ = 3.5f;
-  float specular_ = 1.0f;
+  float diffuse_ = 2.0f;
+  float specular_ = 0.5f;
   float specular_power_ = 6.0f;
 
   // Model attribute arrays
@@ -70,14 +71,16 @@ class ObjRenderer {
 
   // Shader program details
   GLuint shader_program_;
-  GLuint attri_vertices_;
-  GLuint attri_uvs_;
-  GLuint attri_normals_;
-  GLuint uniform_mvp_mat_;
-  GLuint uniform_mv_mat_;
-  GLuint uniform_texture_;
-  GLuint uniform_lighting_param_;
-  GLuint uniform_material_param_;
+  GLint attri_vertices_;
+  GLint attri_uvs_;
+  GLint attri_normals_;
+  GLint uniform_mvp_mat_;
+  GLint uniform_mv_mat_;
+  GLint uniform_texture_;
+  GLint uniform_lighting_param_;
+  GLint uniform_material_param_;
+  GLint uniform_color_correction_param_;
+  GLint uniform_color_;
 };
 }  // namespace hello_ar
 

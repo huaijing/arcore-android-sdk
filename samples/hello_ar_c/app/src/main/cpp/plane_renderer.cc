@@ -15,49 +15,26 @@
  */
 
 #include "plane_renderer.h"
+#include <string>
 #include "util.h"
 
 namespace hello_ar {
 namespace {
-constexpr char kVertexShader[] = R"(
-    precision highp float;
-    precision highp int;
-    attribute vec3 vertex;
-    varying vec2 v_textureCoords;
-    varying float v_alpha;
-
-    uniform mat4 mvp;
-    uniform mat4 texture_mat;
-    void main() {
-      gl_Position = mvp * vec4(vertex.x, 0.0, vertex.y, 1.0);
-      // Vertex Z value is used as the alpha in this shader.
-      v_alpha = vertex.z;
-      v_textureCoords = (texture_mat * vec4(vertex.x, 0.0, vertex.y, 1.0)).xz;
-    })";
-
-constexpr char kFragmentShader[] = R"(
-    precision highp float;
-    precision highp int;
-    uniform sampler2D texture;
-    uniform vec3 color;
-    varying vec2 v_textureCoords;
-    varying float v_alpha;
-    void main() {
-      float r = texture2D(texture, v_textureCoords).r;
-      gl_FragColor = vec4(color.xyz, r * v_alpha);
-    })";
+constexpr char kVertexShaderFilename[] = "shaders/plane.vert";
+constexpr char kFragmentShaderFilename[] = "shaders/plane.frag";
 }  // namespace
 
 void PlaneRenderer::InitializeGlContent(AAssetManager* asset_manager) {
-  shader_program_ = util::CreateProgram(kVertexShader, kFragmentShader);
-
+  shader_program_ = util::CreateProgram(kVertexShaderFilename,
+                                        kFragmentShaderFilename, asset_manager);
   if (!shader_program_) {
     LOGE("Could not create program.");
   }
 
   uniform_mvp_mat_ = glGetUniformLocation(shader_program_, "mvp");
   uniform_texture_ = glGetUniformLocation(shader_program_, "texture");
-  uniform_texture_mat_ = glGetUniformLocation(shader_program_, "texture_mat");
+  uniform_model_mat_ = glGetUniformLocation(shader_program_, "model_mat");
+  uniform_normal_vec_ = glGetUniformLocation(shader_program_, "normal");
   uniform_color_ = glGetUniformLocation(shader_program_, "color");
   attri_vertices_ = glGetAttribLocation(shader_program_, "vertex");
 
@@ -69,7 +46,7 @@ void PlaneRenderer::InitializeGlContent(AAssetManager* asset_manager) {
                   GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  if (!util::LoadPngFromAssetManager(GL_TEXTURE_2D, "trigrid.png")) {
+  if (!util::LoadPngFromAssetManager(GL_TEXTURE_2D, "models/trigrid.png")) {
     LOGE("Could not load png texture for planes.");
   }
 
@@ -81,14 +58,12 @@ void PlaneRenderer::InitializeGlContent(AAssetManager* asset_manager) {
 }
 
 void PlaneRenderer::Draw(const glm::mat4& projection_mat,
-                         const glm::mat4& view_mat, const ArSession* ar_session,
-                         const ArPlane* ar_plane, const glm::vec3& color) {
+                         const glm::mat4& view_mat, const ArSession& ar_session,
+                         const ArPlane& ar_plane, const glm::vec3& color) {
   if (!shader_program_) {
     LOGE("shader_program is null.");
     return;
   }
-
-  glm::mat4 model_mat;
 
   UpdateForPlane(ar_session, ar_plane);
 
@@ -103,9 +78,9 @@ void PlaneRenderer::Draw(const glm::mat4& projection_mat,
   glUniformMatrix4fv(uniform_mvp_mat_, 1, GL_FALSE,
                      glm::value_ptr(projection_mat * view_mat * model_mat_));
 
-  glUniformMatrix4fv(uniform_texture_mat_, 1, GL_FALSE,
+  glUniformMatrix4fv(uniform_model_mat_, 1, GL_FALSE,
                      glm::value_ptr(model_mat_));
-
+  glUniform3f(uniform_normal_vec_, normal_vec_.x, normal_vec_.y, normal_vec_.z);
   glUniform3f(uniform_color_, color.x, color.y, color.z);
 
   glEnableVertexAttribArray(attri_vertices_);
@@ -120,8 +95,8 @@ void PlaneRenderer::Draw(const glm::mat4& projection_mat,
   util::CheckGlError("plane_renderer::Draw()");
 }
 
-void PlaneRenderer::UpdateForPlane(const ArSession* ar_session,
-                                   const ArPlane* ar_plane) {
+void PlaneRenderer::UpdateForPlane(const ArSession& ar_session,
+                                   const ArPlane& ar_plane) {
   // The following code generates a triangle mesh filling a convex polygon,
   // including a feathered edge for blending.
   //
@@ -138,7 +113,7 @@ void PlaneRenderer::UpdateForPlane(const ArSession* ar_session,
   triangles_.clear();
 
   int32_t polygon_length;
-  ArPlane_getPolygonSize(ar_session, ar_plane, &polygon_length);
+  ArPlane_getPolygonSize(&ar_session, &ar_plane, &polygon_length);
 
   if (polygon_length == 0) {
     LOGE("PlaneRenderer::UpdatePlane, no valid plane polygon is found");
@@ -147,7 +122,7 @@ void PlaneRenderer::UpdateForPlane(const ArSession* ar_session,
 
   const int32_t vertices_size = polygon_length / 2;
   std::vector<glm::vec2> raw_vertices(vertices_size);
-  ArPlane_getPolygon(ar_session, ar_plane,
+  ArPlane_getPolygon(&ar_session, &ar_plane,
                      glm::value_ptr(raw_vertices.front()));
 
   // Fill vertex 0 to 3. Note that the vertex.xy are used for x and z
@@ -157,28 +132,24 @@ void PlaneRenderer::UpdateForPlane(const ArSession* ar_session,
     vertices_.push_back(glm::vec3(raw_vertices[i].x, raw_vertices[i].y, 0.0f));
   }
 
-  util::ScopedArPose scopedArPose(ar_session);
-  ArPlane_getCenterPose(ar_session, ar_plane, scopedArPose.GetArPose());
-  ArPose_getMatrix(ar_session, scopedArPose.GetArPose(),
+  util::ScopedArPose scopedArPose(&ar_session);
+  ArPlane_getCenterPose(&ar_session, &ar_plane, scopedArPose.GetArPose());
+  ArPose_getMatrix(&ar_session, scopedArPose.GetArPose(),
                    glm::value_ptr(model_mat_));
-
-  // Get plane center in XZ axis.
-  glm::vec2 plane_center = glm::vec2(model_mat_[3][0], model_mat_[3][2]);
+  normal_vec_ = util::GetPlaneNormal(ar_session, *scopedArPose.GetArPose());
 
   // Feather distance 0.2 meters.
   const float kFeatherLength = 0.2f;
   // Feather scale over the distance between plane center and vertices.
   const float kFeatherScale = 0.2f;
 
-  // Fill vertex 0 to 3, with alpha set to 1.
+  // Fill vertex 4 to 7, with alpha set to 1.
   for (int32_t i = 0; i < vertices_size; ++i) {
-    const glm::vec2 v = raw_vertices[i];
-
     // Vector from plane center to current point.
-    const glm::vec2 d = v - plane_center;
+    glm::vec2 v = raw_vertices[i];
     const float scale =
-        1.0f - std::min((kFeatherLength / glm::length(d)), kFeatherScale);
-    const glm::vec2 result_v = scale * d + plane_center;
+        1.0f - std::min((kFeatherLength / glm::length(v)), kFeatherScale);
+    const glm::vec2 result_v = scale * v;
 
     vertices_.push_back(glm::vec3(result_v.x, result_v.y, 1.0f));
   }

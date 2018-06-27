@@ -22,9 +22,9 @@
 #include <android/asset_manager.h>
 #include <jni.h>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "arcore_c_api.h"
 #include "background_renderer.h"
@@ -41,14 +41,14 @@ class HelloArApplication {
  public:
   // Constructor and deconstructor.
   HelloArApplication() = default;
-  HelloArApplication(AAssetManager* asset_manager, void* env, void* context);
+  HelloArApplication(AAssetManager* asset_manager);
   ~HelloArApplication();
 
   // OnPause is called on the UI thread from the Activity's onPause method.
   void OnPause();
 
   // OnResume is called on the UI thread from the Activity's onResume method.
-  void OnResume();
+  void OnResume(void* env, void* context, void* activity);
 
   // OnSurfaceCreated is called on the OpenGL thread when GLSurfaceView
   // is created.
@@ -78,13 +78,27 @@ class HelloArApplication {
   ArSession* ar_session_ = nullptr;
   ArFrame* ar_frame_ = nullptr;
 
+  bool install_requested_ = false;
+  int width_ = 1;
+  int height_ = 1;
+  int display_rotation_ = 0;
+
   AAssetManager* const asset_manager_;
 
-  // The anchors at which we are drawing android models
-  std::unordered_set<ArAnchor*> tracked_obj_set_;
+  // The anchors at which we are drawing android models using given colors.
+  struct ColoredAnchor {
+    ArAnchor* anchor;
+    float color[4];
+  };
+
+  std::vector<ColoredAnchor> anchors_;
 
   // Stores the randomly-selected color each plane is drawn with
   std::unordered_map<ArPlane*, glm::vec3> plane_color_map_;
+
+  // The first plane is always rendered in white, if this is true then a plane
+  // at some point has been found.
+  bool first_plane_has_been_found_ = false;
 
   PointCloudRenderer point_cloud_renderer_;
   BackgroundRenderer background_renderer_;
@@ -92,6 +106,8 @@ class HelloArApplication {
   ObjRenderer andy_renderer_;
 
   int32_t plane_count_ = 0;
+
+  void SetColor(float r, float g, float b, float a, float* color4f);
 };
 }  // namespace hello_ar
 
