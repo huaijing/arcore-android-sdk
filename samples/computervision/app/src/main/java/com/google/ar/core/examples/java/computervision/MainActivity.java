@@ -17,6 +17,7 @@
 package com.google.ar.core.examples.java.computervision;
 
 import static com.google.ar.core.examples.java.computervision.utility.CameraPermissionHelper.CAMERA_PERMISSION_CODE;
+//import static com.google.ar.core.examples.java.computervision.utility.WritePermissionHelper.WRITE_EXTERNAL_STORAGE_PERMISSION_CODE;
 
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
@@ -26,7 +27,6 @@ import android.hardware.SensorManager;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.support.design.widget.BaseTransientBottomBar;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -42,6 +42,7 @@ import com.google.ar.core.Session;
 import com.google.ar.core.examples.java.computervision.rendering.BackgroundRenderer;
 import com.google.ar.core.examples.java.computervision.utility.CameraImageBuffer;
 import com.google.ar.core.examples.java.computervision.utility.CameraPermissionHelper;
+import com.google.ar.core.examples.java.computervision.utility.WritePermissionHelper;
 import com.google.ar.core.examples.java.computervision.utility.DisplayRotationHelper;
 import com.google.ar.core.examples.java.computervision.utility.EdgeDetector;
 import com.google.ar.core.examples.java.computervision.utility.TextureReader;
@@ -584,6 +585,9 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             mDisplayRotationHelper.onResume();
         } else {
             CameraPermissionHelper.requestCameraPermission(this);
+        }
+        if (!WritePermissionHelper.hasWritePermission(this)) {
+            WritePermissionHelper.requestWritePermission(this);
         }
     }
 
