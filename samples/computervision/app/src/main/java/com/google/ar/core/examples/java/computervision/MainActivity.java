@@ -88,9 +88,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private boolean is_recording = false;
     private boolean run_slam = false;
 
-    private static byte[] s_ImageBuffer = new byte[0];
-    private static int s_ImageBufferSize = 0;
-
     private DataSampler dataSampler;
     private String resourceDir;
     private FileOutputStream deviceInfo;
@@ -690,7 +687,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                     }
                 }
 
-
                 if (run_slam) {
 
                 } else {
@@ -705,23 +701,12 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                                 }
                                 FileOutputStream out = new FileOutputStream(imageFile);
 
-                                int bufferSize = -1;
-                                if (imageBuffer.format == imageBuffer.IMAGE_FORMAT_RGBA) {
-                                    bufferSize = imageBuffer.width * imageBuffer.height * 4;
-                                } else {
-                                    bufferSize = imageBuffer.width * imageBuffer.height;
-                                }
-                                if (s_ImageBuffer.length < bufferSize || bufferSize < s_ImageBufferSize) {
-                                    s_ImageBuffer = new byte[bufferSize];
-                                    s_ImageBufferSize = bufferSize;
-                                }
-
-                                imageBuffer.buffer.position(0);
-                                imageBuffer.buffer.get(s_ImageBuffer);
+                                byte[] s_ImageBuffer = new byte[imageBuffer.buffer.remaining()];
+                                imageBuffer.buffer.get(s_ImageBuffer, 0, s_ImageBuffer.length);
                                 out.write(s_ImageBuffer);
 
-                                Log.e("onDrawFrame :", "" + imageBuffer.width + "," + imageBuffer.height + "," + lastTimeStamp +
-                                        "," + s_ImageBuffer.length  + "," + imageBuffer.format);
+                                Log.e("onDrawFrame :", "" + imageBuffer.width + "," + imageBuffer.height + "," +
+                                        lastTimeStamp + "," + s_ImageBuffer.length  + "," + imageBuffer.format);
 
                                 out.flush();
                                 out.close();
