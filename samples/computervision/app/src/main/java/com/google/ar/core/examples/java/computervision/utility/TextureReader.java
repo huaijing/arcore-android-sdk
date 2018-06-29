@@ -135,6 +135,32 @@ public class TextureReader {
             + "    gl_FragColor.r = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;\n"
             + "}";
 
+
+    public static final String VERTEX_SHADER = "" +
+            "attribute vec2 position;\n" +
+            "attribute vec2 texcoord;\n" +
+            "uniform mat4 STMatrix; \n" +
+            "\n" +
+            "varying vec2 outTexCoord;\n" +
+            "\n" +
+            "void main()\n" +
+            "{\n" +
+            "	outTexCoord = (STMatrix * vec4(texcoord.xy, 0.0, 1.0)).xy;\n" +
+            "	gl_Position = vec4(position, 0, 1);\n" +
+            "}";
+
+    public static final String FRAGMENT_SHADER = "" +
+            "precision mediump float;\n" +
+            "varying vec2 outTexCoord;\n" +
+            "uniform sampler2D image;\n" +
+            " \n" +
+            "void main()\n" +
+            "{\n" +
+            "     vec2 tex = outTexCoord;  \n"+
+            "       \n"+
+            "     gl_FragColor = texture2D(image, tex);\n" +
+            "}";
+
     /**
      * Creates the texture reader.
      * This function needs to be called from the OpenGL rendering thread.

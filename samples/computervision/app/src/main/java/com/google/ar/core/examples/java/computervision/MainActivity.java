@@ -49,11 +49,15 @@ import com.google.ar.core.examples.java.computervision.utility.TextureReader;
 import com.google.ar.core.exceptions.UnavailableApkTooOldException;
 import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
+import com.google.ar.core.examples.java.computervision.rendering.OpenGLUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.FloatBuffer;
+
+
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -83,6 +87,14 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private static final int IMAGE_WIDTH = 640;
     private static final int IMAGE_HEIGHT = 480;
 
+
+    //FBO0
+    private int mFBO0Program;
+    private int [] mFBO0VBO;
+    private FloatBuffer mFBO0VertexBuffer;
+    private FloatBuffer mFBO0TextureBuffer;
+
+
     private int mFrameBufferIndex = -1;
 
     private boolean is_recording = false;
@@ -106,7 +118,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private boolean has_gyroscope = false;
     private boolean has_gravity = false;
     private boolean has_orientation = false;
-
 
     private long lastTimeStamp = -1;
 
@@ -653,6 +664,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         // Set keepAspectRatio to false so that the output image covers the whole viewport.
 //        mTextureReader.create(CameraImageBuffer.IMAGE_FORMAT_I8, IMAGE_WIDTH, IMAGE_HEIGHT, false);
         mTextureReader.create(CameraImageBuffer.IMAGE_FORMAT_RGBA, IMAGE_WIDTH, IMAGE_HEIGHT, false);
+
+        mFBO0Program = OpenGLUtils.loadProgram(TextureReader.VERTEX_SHADER, TextureReader.FRAGMENT_SHADER);
     }
 
     @Override
