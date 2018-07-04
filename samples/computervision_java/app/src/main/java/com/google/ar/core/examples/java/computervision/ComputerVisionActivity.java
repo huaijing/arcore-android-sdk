@@ -18,6 +18,7 @@ package com.google.ar.core.examples.java.computervision;
 
 import android.graphics.ImageFormat;
 import android.media.Image;
+import android.media.MediaRecorder;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -31,6 +32,7 @@ import com.google.ar.core.CameraIntrinsics;
 import com.google.ar.core.Frame;
 import com.google.ar.core.Session;
 import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
+import com.google.ar.core.examples.java.common.helpers.WritePermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
 import com.google.ar.core.examples.java.common.helpers.SnackbarHelper;
 import com.google.ar.core.exceptions.CameraNotAvailableException;
@@ -43,6 +45,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /** This is a simple example that demonstrates cpu image access with ARCore. */
 public class ComputerVisionActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
@@ -87,8 +94,25 @@ public class ComputerVisionActivity extends AppCompatActivity implements GLSurfa
   private static final int TEXTURE_HEIGHT = 1080;
 
   // We choose a lower sampling resolution.
-  private static final int IMAGE_WIDTH = 1280;
-  private static final int IMAGE_HEIGHT = 720;
+//  private static final int IMAGE_WIDTH = 1280;
+//  private static final int IMAGE_HEIGHT = 720;
+  private static final int IMAGE_WIDTH = 640;
+  private static final int IMAGE_HEIGHT = 480;
+
+  private boolean is_recording = false;
+  private boolean run_slam = false;
+
+  private DataSampler dataSampler;
+  private String resourceDir;
+  private FileOutputStream deviceInfo;
+  private FileOutputStream deviceName;
+  private File deviceInfo_file;
+  private File deviceName_file;
+
+
+  private long lastTimeStamp = -1;
+
+
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -135,7 +159,14 @@ public class ComputerVisionActivity extends AppCompatActivity implements GLSurfa
           return;
         }
 
+        if (!WritePermissionHelper.hasWritePermission(this)) {
+          WritePermissionHelper.requestWritePermission(this);
+          return;
+        }
+
         session = new Session(/* context= */ this);
+
+
       } catch (UnavailableArcoreNotInstalledException
           | UnavailableUserDeclinedInstallationException e) {
         message = "Please install ARCore";
@@ -225,6 +256,11 @@ public class ComputerVisionActivity extends AppCompatActivity implements GLSurfa
     } catch (IOException e) {
       Log.e(TAG, "Failed to read an asset file", e);
     }
+
+    is_recording = true;
+    dataSampler = new DataSampler();
+    resourceDir = dataSampler.genCurSamplerDir();
+
   }
 
   @Override
@@ -286,6 +322,68 @@ public class ComputerVisionActivity extends AppCompatActivity implements GLSurfa
               image.getHeight(),
               image.getPlanes()[0].getRowStride(),
               image.getPlanes()[0].getBuffer());
+
+
+//      ByteBuffer imageBuffer = image.getPlanes()[0].getBuffer();
+
+      byte[] s_ImageBuffer;
+      ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
+//      ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
+//      ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
+
+      int ySize = yBuffer.remaining();
+//      int uSize = uBuffer.remaining();
+//      int vSize = vBuffer.remaining();
+
+//      s_ImageBuffer = new byte[ySize + uSize + vSize];
+      s_ImageBuffer = new byte[ySize];
+
+      //U and V are swapped
+      yBuffer.get(s_ImageBuffer, 0, ySize);
+//      vBuffer.get(s_ImageBuffer, ySize, vSize);
+//      uBuffer.get(s_ImageBuffer, ySize + vSize, uSize);
+
+
+      if (run_slam) {
+
+      } else {
+        if (is_recording) {
+          if (lastTimeStamp > 0) {
+            try {
+
+              String imageName = resourceDir + "img_data_" + lastTimeStamp + ".bin";
+              File imageFile = new File(imageName);
+//
+//              Log.e("renderProcessedImageCpuDirectAccess :", "" + lastTimeStamp + "," + imageName + "," +
+//                      image.getFormat() + ", " + image.getWidth() + "," + image.getHeight() + "," +
+//                      image.getPlanes()[0].getRowStride() + "," + image.getPlanes().length + ", " + s_ImageBuffer.length + "," +
+//                      ySize + ", " + uSize + "," + vSize + "," + image.getPlanes()[0].getRowStride() + "," + image.getPlanes()[0].getPixelStride() +
+//                      "," + image.getPlanes()[1].getRowStride() + "," + image.getPlanes()[1].getPixelStride() + "," + image.getPlanes()[2].getRowStride() + "," +
+//                      image.getPlanes()[2].getPixelStride());
+
+              if (imageFile.exists()) {
+                imageFile.delete();
+              }
+              FileOutputStream out = new FileOutputStream(imageFile);
+
+//              byte[] s_ImageBuffer = new byte[imageBuffer.remaining()];
+//              imageBuffer.get(s_ImageBuffer, 0, s_ImageBuffer.length);
+              out.write(s_ImageBuffer);
+
+//              Log.e("onDrawFrame :", "" + imageBuffer.width + "," + imageBuffer.height + "," +
+//                      lastTimeStamp + "," + s_ImageBuffer.length  + "," + imageBuffer.format);
+
+              out.flush();
+              out.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+            }
+          }
+        }
+      }
+
+
+      lastTimeStamp = frame.getTimestamp();
 
       cpuImageRenderer.drawWithCpuImage(
           frame,
